@@ -93,12 +93,15 @@ class Store(ctx: Context) {
     fun submit(v: Int, okDouble: Boolean = true) {
         val g = active ?: return
         val r = g.rem(g.cur)
-        // Rebond : au-delà de zéro, l'excès est renvoyé (reste 11, volée de 22 → il reste 11)
-        val d = if (v > r) 2 * r - v else v
+        val bounce = v > r
+        val d = if (bounce) 2 * r - v else v
         val bust = (g.dbl && r - d == 1) || (g.dbl && v == r && !okDouble)
         val won = !bust && v == r
+        val finalD = if (bust) 0 else d
+        val finalBounce = bounce && !bust
+
         val n = g.copy(
-            log = g.log + Turn(g.cur, if (bust) 0 else v, bust, if (bust) 0 else d, v > r && !bust),
+            log = g.log + Turn(g.cur, v, bust, finalD, finalBounce),
             done = won,
             win = if (won) g.cur else -1,
             cur = if (won) g.cur else (g.cur + 1) % g.names.size

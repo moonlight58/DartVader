@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -111,8 +112,8 @@ fun SetupScreen(s: Store) {
                 Text("${fmt(p.ts)} · ${mode(p)}", color = Muted, fontSize = 13.sp)
                 Text(p.names.indices.joinToString(" · ") { "${p.names[it]} ${p.rem(it)}" }, Modifier.padding(vertical = 6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button({ s.resume(p.id) }, Modifier.weight(2f)) { Text("Reprendre") }
-                    OutlinedButton({ s.deletePaused(p.id) }, Modifier.weight(1f)) { Text("Supprimer") }
+                    Button({ s.resume(p.id) }, Modifier.weight(1f)) { Text("Reprendre", maxLines = 1) }
+                    OutlinedButton({ s.deletePaused(p.id) }, Modifier.weight(1f)) { Text("Supprimer", maxLines = 1) }
                 }
             }
         }
@@ -166,7 +167,7 @@ fun GameScreen(s: Store, g: Game) {
                     Text("${g.rem(i)}", fontSize = 60.sp, fontWeight = FontWeight.Black)
                     val l = g.turns(i).lastOrNull()
                     Text(
-                        "moy. %.1f · %s".format(Locale.FRANCE, g.avg(i), if (l == null) "—" else if (l.bust) "annulée" else "dernière ${l.v}${if (l.bounce) " (rebond)" else ""}"),
+                        "moy. %.1f · %s".format(Locale.FRANCE, g.avg(i), if (l == null) "—" else if (l.bust) "volée ${l.v} (annulée)" else "dernière ${l.v}${if (l.bounce) " (rebond)" else ""}"),
                         color = Muted, fontSize = 12.sp
                     )
                 }
@@ -209,13 +210,31 @@ fun GameScreen(s: Store, g: Game) {
         confirmButton = { TextButton({ s.submit(inp.toInt(), true); inp = ""; askDouble = false }) { Text("Oui") } },
         dismissButton = { TextButton({ s.submit(inp.toInt(), false); inp = ""; askDouble = false }) { Text("Non") } }
     )
-    if (askQuit) AlertDialog(
-        onDismissRequest = { askQuit = false },
-        title = { Text("Abandonner cette partie ?") },
-        text = { Text("Elle ne sera pas enregistrée. Utilise « Mettre en pause » pour la reprendre plus tard.") },
-        confirmButton = { TextButton({ askQuit = false; s.abandon() }) { Text("Abandonner") } },
-        dismissButton = { TextButton({ askQuit = false }) { Text("Annuler") } }
-    )
+    if (askQuit) Dialog(onDismissRequest = { askQuit = false }) {
+        Panel(Modifier.fillMaxWidth(), fill = Surf, border = Line) {
+            Text("ABANDONNER", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Line)
+            Spacer(Modifier.height(8.dp))
+            Text("Abandonner cette partie ?", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Ivory)
+            Spacer(Modifier.height(6.dp))
+            Text("Elle ne sera pas enregistrée. Utilise « Mettre en pause » pour la reprendre plus tard.", color = Muted, fontSize = 14.sp)
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    { askQuit = false },
+                    Modifier.weight(1f).height(48.dp),
+                    shape = RectangleShape,
+                    border = BorderStroke(3.dp, Line),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Ivory)
+                ) { Text("Annuler", maxLines = 1) }
+                Button(
+                    { askQuit = false; s.abandon() },
+                    Modifier.weight(1f).height(48.dp),
+                    shape = RectangleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = Red, contentColor = Color.White)
+                ) { Text("Abandonner", maxLines = 1) }
+            }
+        }
+    }
     if (g.done) AlertDialog(
         onDismissRequest = {},
         title = { Text("🏆 ${g.names[g.win]} gagne !") },
