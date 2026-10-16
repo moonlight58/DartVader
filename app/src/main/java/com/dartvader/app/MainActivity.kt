@@ -70,7 +70,7 @@ fun DartsApp(s: Store) {
                     TextButton({ tab = 1 }) { Text("Historique", color = if (tab == 1) Brass else Muted) }
                 }
                 Box(Modifier.fillMaxWidth().height(3.dp).background(Line))
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).imePadding().padding(16.dp)) {
                     val g = s.active
                     when {
                         tab == 1 -> HistoryScreen(s)
