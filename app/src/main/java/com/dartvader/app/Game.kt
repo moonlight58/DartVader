@@ -66,6 +66,9 @@ class Store(ctx: Context) {
             runCatching { JSONArray(s).let { a -> List(a.length()) { a.getString(it) } } }.getOrNull()
         } ?: listOf("Joueur 1", "Joueur 2")
     )
+    var style by mutableStateOf(
+        runCatching { AppStyle.valueOf(sp.getString("style", null)!!) }.getOrDefault(AppStyle.BAUHAUS)
+    )
 
     fun save() {
         sp.edit()
@@ -74,6 +77,7 @@ class Store(ctx: Context) {
             .putString("history", JSONArray(history.map { it.toJson() }).toString())
             .putInt("start", start).putBoolean("dbl", dbl)
             .putString("names", JSONArray(names).toString())
+            .putString("style", style.name)
             .apply()
     }
 
