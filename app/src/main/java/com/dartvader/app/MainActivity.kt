@@ -289,6 +289,7 @@ fun SetupScreen(s: Store) {
 fun GameScreen(s: Store, g: Game) {
     val k = LocalSkin.current
     var inp by rememberSaveable { mutableStateOf("") }
+    var multiplier by rememberSaveable { mutableStateOf(1) }
     var currentDarts by rememberSaveable { mutableStateOf(listOf<Int>()) }
     var pendingDartValue by remember { mutableStateOf(0) }
     var askDouble by remember { mutableStateOf(false) }
@@ -305,16 +306,15 @@ fun GameScreen(s: Store, g: Game) {
         sc
     }
 
+    val evaluatedDart = (inp.toIntOrNull() ?: 0) * multiplier
+
     fun add(c: Char) { 
         val n = (inp + c).toIntOrNull() ?: return
-        if (n <= 60) inp = n.toString()
+        if (n <= 50) inp = n.toString()
     }
 
-    fun validateDart() {
-        val v = inp.toIntOrNull() ?: return
-        if (v > 60) return
-        inp = ""
-
+    fun submitDart(v: Int) {
+        if (v > 180) return
         var testScore = runningScore
         val bounce = v > testScore
         testScore = if (bounce) v - testScore else testScore - v
@@ -333,6 +333,14 @@ fun GameScreen(s: Store, g: Game) {
                 currentDarts = nextDarts
             }
         }
+        inp = ""
+        multiplier = 1
+    }
+
+    fun validateDart() {
+        val raw = inp.toIntOrNull() ?: return
+        val v = raw * multiplier
+        submitDart(v)
     }
 
     fun validateTurn() {
@@ -385,50 +393,83 @@ fun GameScreen(s: Store, g: Game) {
         }
     }
 
-    Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text("Au tour de", color = k.muted)
             Text(g.names[g.cur], fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
-        Text(inp.ifEmpty { "0" }, fontSize = 48.sp, fontWeight = FontWeight.Bold, color = if (k.hud) k.cta else k.ink)
-    }
-    listOf("123", "456", "789").forEach { r ->
-        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            r.forEach { c -> Choice("$c", false, Modifier.weight(1f).height(56.dp)) { add(c) } }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                if (inp.isEmpty()) "0" else if (multiplier > 1) "$inp × $multiplier = $evaluatedDart" else inp,
+                fontSize = if (multiplier > 1) 24.sp else 48.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (k.hud) k.cta else k.ink
+            )
         }
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Choice("C", false, Modifier.weight(1f).height(56.dp)) { inp = "" }
-        Choice("0", false, Modifier.weight(1f).height(56.dp)) { add('0') }
-        Choice("⌫", false, Modifier.weight(1f).height(56.dp)) { inp = inp.dropLast(1) }
+
+    // Multiplier selector: Simple, Double, Triple
+    Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        listOf(1 to "Simple (×1)", 2 to "Double (×2)", 3 to "Triple (×3)").forEach { (m, label) ->
+            val sel = multiplier == m
+            Button(
+                onClick = { multiplier = m },
+                modifier = Modifier.weight(1f).height(36.dp),
+                shape = k.btn,
+                border = BorderStroke(k.bw, if (sel) k.primary else k.line),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (sel) k.primary else k.surf,
+                    contentColor = if (sel) Color.White else k.ink
+                ),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+
+    listOf("123", "456", "789").forEach { r ->
+        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            r.forEach { c -> Choice("$c", false, Modifier.weight(1f).height(44.dp)) { add(c) } }
+        }
+    }
+    Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Choice("C", false, Modifier.weight(1f).height(44.dp)) { inp = "" }
+        Choice("0", false, Modifier.weight(1f).height(44.dp)) { add('0') }
+        Choice("⌫", false, Modifier.weight(1f).height(44.dp)) { inp = inp.dropLast(1) }
+    }
+
+    Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         OutlinedButton({ 
             if (currentDarts.isNotEmpty()) {
                 currentDarts = currentDarts.dropLast(1)
             } else {
                 s.undo()
             }
-        }, Modifier.weight(1f).height(52.dp), shape = k.btn) { 
-            Text(if (currentDarts.isNotEmpty()) "Effacer fléchette" else "Annuler") 
+        }, Modifier.weight(1f).height(46.dp), shape = k.btn) { 
+            Text(if (currentDarts.isNotEmpty()) "Effacer" else "Annuler", fontSize = 13.sp) 
         }
         Button(
-            { validateDart() }, Modifier.weight(2f).height(52.dp), shape = k.btn,
+            { validateDart() }, Modifier.weight(2f).height(46.dp), shape = k.btn,
             colors = ButtonDefaults.buttonColors(containerColor = k.cta, contentColor = k.onCta),
             enabled = inp.isNotEmpty() && currentDarts.size < 3
-        ) { Text("Valider la fléchette") }
+        ) { Text("Valider la fléchette", fontSize = 14.sp, fontWeight = FontWeight.Bold) }
     }
+
     if (currentDarts.isNotEmpty()) {
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Button(
-                { validateTurn() }, Modifier.fillMaxWidth().height(48.dp), shape = k.btn,
-                colors = ButtonDefaults.buttonColors(containerColor = k.primary, contentColor = Color.White)
-            ) { Text("Valider le tour (${currentDarts.sum()} pts en ${currentDarts.size} fléchette${if (currentDarts.size > 1) "s" else ""})") }
-        }
+        Button(
+            { validateTurn() }, Modifier.fillMaxWidth().height(42.dp).padding(bottom = 6.dp), shape = k.btn,
+            colors = ButtonDefaults.buttonColors(containerColor = k.primary, contentColor = Color.White)
+        ) { Text("Valider le tour (${currentDarts.sum()} pts)", fontSize = 13.sp) }
     }
-    Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button({ s.pause() }, Modifier.weight(1f), shape = k.btn) { Text("Mettre en pause", maxLines = 1) }
-        OutlinedButton({ askQuit = true }, Modifier.weight(1f), shape = k.btn) { Text("Abandonner", maxLines = 1) }
+
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        OutlinedButton({ s.pause() }, Modifier.weight(1f).height(38.dp), shape = k.btn, contentPadding = PaddingValues(0.dp)) { 
+            Text("Pause", fontSize = 12.sp, maxLines = 1) 
+        }
+        OutlinedButton({ askQuit = true }, Modifier.weight(1f).height(38.dp), shape = k.btn, colors = ButtonDefaults.outlinedButtonColors(contentColor = k.red), contentPadding = PaddingValues(0.dp)) { 
+            Text("Abandonner", fontSize = 12.sp, maxLines = 1) 
+        }
     }
 
     if (askDouble) AlertDialog(
