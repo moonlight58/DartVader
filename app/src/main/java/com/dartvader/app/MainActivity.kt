@@ -289,13 +289,58 @@ fun SetupScreen(s: Store) {
 fun GameScreen(s: Store, g: Game) {
     val k = LocalSkin.current
     var inp by rememberSaveable { mutableStateOf("") }
+    var currentDarts by rememberSaveable { mutableStateOf(listOf<Int>()) }
+    var pendingDartValue by remember { mutableStateOf(0) }
     var askDouble by remember { mutableStateOf(false) }
     var askQuit by remember { mutableStateOf(false) }
 
-    fun add(c: Char) { val n = (inp + c).toIntOrNull() ?: return; if (n <= 180) inp = n.toString() }
-    fun valider() {
-        val v = inp.toIntOrNull() ?: 0
-        if (g.dbl && v == g.rem(g.cur)) askDouble = true else { s.submit(v); inp = "" }
+    val startRem = g.rem(g.cur)
+
+    val runningScore = remember(startRem, currentDarts) {
+        var sc = startRem
+        for (d in currentDarts) {
+            if (sc == 0) break
+            sc = if (d > sc) d - sc else sc - d
+        }
+        sc
+    }
+
+    fun add(c: Char) { 
+        val n = (inp + c).toIntOrNull() ?: return
+        if (n <= 60) inp = n.toString()
+    }
+
+    fun validateDart() {
+        val v = inp.toIntOrNull() ?: return
+        if (v > 60) return
+        inp = ""
+
+        var testScore = runningScore
+        val bounce = v > testScore
+        testScore = if (bounce) v - testScore else testScore - v
+
+        val needsDoubleCheck = g.dbl && testScore == 0
+
+        if (needsDoubleCheck) {
+            pendingDartValue = v
+            askDouble = true
+        } else {
+            val nextDarts = currentDarts + v
+            if (testScore == 0 || nextDarts.size >= 3) {
+                s.submit(nextDarts, true)
+                currentDarts = emptyList()
+            } else {
+                currentDarts = nextDarts
+            }
+        }
+    }
+
+    fun validateTurn() {
+        if (currentDarts.isNotEmpty()) {
+            s.submit(currentDarts, true)
+            currentDarts = emptyList()
+            inp = ""
+        }
     }
 
     Text(mode(g), color = k.muted)
@@ -308,7 +353,7 @@ fun GameScreen(s: Store, g: Game) {
                     Text("${g.rem(i)}", fontSize = 60.sp, fontWeight = FontWeight.Black)
                     val l = g.turns(i).lastOrNull()
                     Text(
-                        "moy. %.1f · %s".format(Locale.FRANCE, g.avg(i), if (l == null) "—" else if (l.bust) "volée ${l.v} (annulée)" else "dernière ${l.v}${if (l.bounce) " (rebond)" else ""}"),
+                        "moy. %.1f · %s".format(Locale.FRANCE, g.avg(i), if (l == null) "—" else if (l.bust) "volée ${l.v} (annulée)" else "dernière ${l.v} (${l.darts.joinToString("+")})${if (l.bounce) " (rebond)" else ""}"),
                         color = if (cur && !k.hud) Color(0xFF6B6258) else k.muted, fontSize = 12.sp
                     )
                 }
@@ -316,7 +361,31 @@ fun GameScreen(s: Store, g: Game) {
             if (row.size == 1) Spacer(Modifier.weight(1f))
         }
     }
-    Row(Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+
+    // Panel showing darts thrown this turn and running score
+    Panel(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 4.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Fléchettes du tour (${currentDarts.size}/3)", fontWeight = FontWeight.Bold, color = k.muted, fontSize = 13.sp)
+            Text("Reste visé : $runningScore", fontWeight = FontWeight.Bold, color = k.primary, fontSize = 14.sp)
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (i in 0 until 3) {
+                val dartVal = currentDarts.getOrNull(i)
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                        .background(if (dartVal != null) k.primary.copy(alpha = 0.15f) else k.surf, k.btn)
+                        .border(k.bw, if (dartVal != null) k.primary else k.line, k.btn),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(if (dartVal != null) "$dartVal" else "—", fontWeight = FontWeight.Bold, color = if (dartVal != null) k.primary else k.muted)
+                }
+            }
+        }
+    }
+
+    Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text("Au tour de", color = k.muted)
             Text(g.names[g.cur], fontSize = 20.sp, fontWeight = FontWeight.Bold)
@@ -333,12 +402,29 @@ fun GameScreen(s: Store, g: Game) {
         Choice("0", false, Modifier.weight(1f).height(56.dp)) { add('0') }
         Choice("⌫", false, Modifier.weight(1f).height(56.dp)) { inp = inp.dropLast(1) }
     }
-    Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton({ s.undo() }, Modifier.weight(1f).height(52.dp), enabled = g.log.isNotEmpty(), shape = k.btn) { Text("Annuler") }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton({ 
+            if (currentDarts.isNotEmpty()) {
+                currentDarts = currentDarts.dropLast(1)
+            } else {
+                s.undo()
+            }
+        }, Modifier.weight(1f).height(52.dp), shape = k.btn) { 
+            Text(if (currentDarts.isNotEmpty()) "Effacer fléchette" else "Annuler") 
+        }
         Button(
-            { valider() }, Modifier.weight(2f).height(52.dp), shape = k.btn,
-            colors = ButtonDefaults.buttonColors(containerColor = k.cta, contentColor = k.onCta)
-        ) { Text("Valider la volée") }
+            { validateDart() }, Modifier.weight(2f).height(52.dp), shape = k.btn,
+            colors = ButtonDefaults.buttonColors(containerColor = k.cta, contentColor = k.onCta),
+            enabled = inp.isNotEmpty() && currentDarts.size < 3
+        ) { Text("Valider la fléchette") }
+    }
+    if (currentDarts.isNotEmpty()) {
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Button(
+                { validateTurn() }, Modifier.fillMaxWidth().height(48.dp), shape = k.btn,
+                colors = ButtonDefaults.buttonColors(containerColor = k.primary, contentColor = Color.White)
+            ) { Text("Valider le tour (${currentDarts.sum()} pts en ${currentDarts.size} fléchette${if (currentDarts.size > 1) "s" else ""})") }
+        }
     }
     Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Button({ s.pause() }, Modifier.weight(1f), shape = k.btn) { Text("Mettre en pause", maxLines = 1) }
@@ -348,9 +434,25 @@ fun GameScreen(s: Store, g: Game) {
     if (askDouble) AlertDialog(
         onDismissRequest = { askDouble = false },
         shape = k.dialog,
-        title = { Text("Dernière fléchette dans un double ?") },
-        confirmButton = { TextButton({ s.submit(inp.toInt(), true); inp = ""; askDouble = false }) { Text("Oui") } },
-        dismissButton = { TextButton({ s.submit(inp.toInt(), false); inp = ""; askDouble = false }) { Text("Non") } }
+        title = { Text("Fléchette dans un double ?") },
+        confirmButton = { 
+            TextButton({ 
+                val nextDarts = currentDarts + pendingDartValue
+                s.submit(nextDarts, true)
+                currentDarts = emptyList()
+                inp = ""
+                askDouble = false 
+            }) { Text("Oui") } 
+        },
+        dismissButton = { 
+            TextButton({ 
+                val nextDarts = currentDarts + pendingDartValue
+                s.submit(nextDarts, false)
+                currentDarts = emptyList()
+                inp = ""
+                askDouble = false 
+            }) { Text("Non") } 
+        }
     )
     if (askQuit) Dialog(onDismissRequest = { askQuit = false }) {
         Panel(Modifier.fillMaxWidth()) {

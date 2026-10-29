@@ -5,8 +5,10 @@ import androidx.compose.runtime.*
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** v = total lancé, d = points réellement retirés du score (négatif si rebond), bounce = excès renvoyé. */
-data class Turn(val p: Int, val v: Int, val bust: Boolean, val d: Int = v, val bounce: Boolean = false)
+/** v = total lancé, d = points réellement retirés du score, bounce = rebond. */
+data class Turn(val p: Int, val darts: List<Int>, val bust: Boolean, val d: Int, val bounce: Boolean = false) {
+    val v: Int get() = darts.sum()
+}
 
 data class Game(
     val id: Long,
@@ -19,7 +21,16 @@ data class Game(
     val win: Int = -1,
     val ts: Long = System.currentTimeMillis()
 ) {
-    fun rem(i: Int) = start - log.filter { it.p == i && !it.bust }.sumOf { it.d }
+    fun rem(i: Int): Int {
+        var score = start
+        log.filter { it.p == i && !it.bust }.forEach { turn ->
+            for (d in turn.darts) {
+                if (score == 0) break
+                score = if (d > score) d - score else score - d
+            }
+        }
+        return score
+    }
     fun turns(i: Int) = log.filter { it.p == i }
     fun avg(i: Int): Double {
         val t = turns(i)
@@ -31,7 +42,7 @@ data class Game(
 private fun Game.toJson() = JSONObject()
     .put("id", id).put("start", start).put("dbl", dbl).put("names", JSONArray(names))
     .put("cur", cur).put("done", done).put("win", win).put("ts", ts)
-    .put("log", JSONArray(log.map { JSONArray(listOf(it.p, it.v, it.bust, it.d, it.bounce)) }))
+    .put("log", JSONArray(log.map { JSONArray(listOf(it.p, JSONArray(it.darts), it.bust, it.d, it.bounce)) }))
 
 private fun gameOf(o: JSONObject): Game {
     val n = o.getJSONArray("names")
@@ -39,7 +50,21 @@ private fun gameOf(o: JSONObject): Game {
     return Game(
         o.getLong("id"), o.getInt("start"), o.getBoolean("dbl"),
         List(n.length()) { n.getString(it) },
-        List(l.length()) { i -> l.getJSONArray(i).let { Turn(it.getInt(0), it.getInt(1), it.getBoolean(2), it.optInt(3, it.getInt(1)), it.optBoolean(4, false)) } },
+        List(l.length()) { i ->
+            l.getJSONArray(i).let { arr ->
+                val p = arr.getInt(0)
+                val second = arr.get(1)
+                val darts = if (second is JSONArray) {
+                    List(second.length()) { j -> second.getInt(j) }
+                } else {
+                    listOf(arr.getInt(1))
+                }
+                val bust = arr.getBoolean(2)
+                val d = arr.optInt(3, darts.sum())
+                val bounce = arr.optBoolean(4, false)
+                Turn(p, darts, bust, d, bounce)
+            }
+        },
         o.getInt("cur"), o.getBoolean("done"), o.getInt("win"), o.getLong("ts")
     )
 }
@@ -93,19 +118,54 @@ class Store(ctx: Context) {
         save()
     }
 
-    /** [v] = total de la volée. [okDouble] = la dernière fléchette était un double. */
-    fun submit(v: Int, okDouble: Boolean = true) {
+    /** [darts] = liste des fléchettes jouées. [okDouble] = si la dernière fléchette était un double. */
+    fun submit(darts: List<Int>, okDouble: Boolean = true) {
         val g = active ?: return
-        val r = g.rem(g.cur)
-        val bounce = v > r
-        val d = if (bounce) 2 * r - v else v
-        val bust = (g.dbl && r - d == 1) || (g.dbl && v == r && !okDouble)
-        val won = !bust && v == r
-        val finalD = if (bust) 0 else d
-        val finalBounce = bounce && !bust
+        if (darts.isEmpty()) return
+        val startRem = g.rem(g.cur)
+
+        var curScore = startRem
+        var bust = false
+        val processedDarts = mutableListOf<Int>()
+        var anyBounce = false
+
+        for ((idx, d) in darts.withIndex()) {
+            if (curScore == 0) break
+            processedDarts.add(d)
+            val bounce = d > curScore
+            if (bounce) anyBounce = true
+
+            curScore = if (bounce) {
+                d - curScore
+            } else {
+                curScore - d
+            }
+
+            if (curScore == 0) {
+                val isLast = idx == darts.size - 1
+                if (g.dbl && (!isLast || !okDouble)) {
+                    bust = true
+                }
+                break
+            } else if (curScore == 1 && g.dbl) {
+                bust = true
+                break
+            }
+        }
+
+        val pointsRemoved = if (bust) 0 else (startRem - curScore)
+        val won = !bust && curScore == 0
+
+        val newTurn = Turn(
+            p = g.cur,
+            darts = if (bust) darts else processedDarts,
+            bust = bust,
+            d = pointsRemoved,
+            bounce = anyBounce && !bust
+        )
 
         val n = g.copy(
-            log = g.log + Turn(g.cur, v, bust, finalD, finalBounce),
+            log = g.log + newTurn,
             done = won,
             win = if (won) g.cur else -1,
             cur = if (won) g.cur else (g.cur + 1) % g.names.size
