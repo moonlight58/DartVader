@@ -50,5 +50,15 @@ The app features a striking architectural and geometric aesthetic:
 
 ---
 
+## Installation & Sharing (Release APK)
+To share a signed release APK with friends:
+1. Locate your built signed release APK (e.g., in `app/build/outputs/apk/release/` or generated via Android Studio) or find it on the release tab.
+2. Transfer the `.apk` file to your friends via messaging (WhatsApp, Telegram), email, or cloud storage (Google Drive).
+3. On their Android devices:
+   - Tap the APK file to install.
+   - If prompted by Android security ("Install unknown apps"), tap **Settings** and enable **"Allow from this source"**.
+   - If Google Play Protect shows an unknown developer warning, tap **"More details"** -> **"Install anyway"**.
+
+---
 ## License
 This project is open-source and available under the MIT License.
