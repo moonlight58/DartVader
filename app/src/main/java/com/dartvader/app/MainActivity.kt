@@ -376,16 +376,19 @@ fun GameScreen(s: Store, g: Game) {
 
     Text(mode(g), color = k.muted)
     g.names.indices.chunked(2).forEach { row ->
-        Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             row.forEach { i ->
                 val cur = i == g.cur && !g.done
                 Panel(Modifier.weight(1f), if (cur) k.hiBorder else k.line, if (cur) k.hi else k.surf) {
-                    Text(g.names[i], fontWeight = FontWeight.SemiBold, maxLines = 1)
-                    Text("${g.rem(i)}", fontSize = 60.sp, fontWeight = FontWeight.Black)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(g.names[i], fontWeight = FontWeight.SemiBold, maxLines = 1, fontSize = 13.sp)
+                        Text("moy. %.1f".format(Locale.FRANCE, g.avg(i)), color = k.muted, fontSize = 11.sp)
+                    }
+                    Text("${g.rem(i)}", fontSize = 42.sp, fontWeight = FontWeight.Black)
                     val l = g.turns(i).lastOrNull()
                     Text(
-                        "moy. %.1f · %s".format(Locale.FRANCE, g.avg(i), if (l == null) "—" else if (l.bust) "volée ${l.v} (annulée)" else "dernière ${l.v} (${l.darts.joinToString("+")})${if (l.bounce) " (rebond)" else ""}"),
-                        color = if (cur && !k.hud) Color(0xFF6B6258) else k.muted, fontSize = 12.sp
+                        if (l == null) "—" else if (l.bust) "volée ${l.v} (annulée)" else "dernière ${l.v} (${l.darts.joinToString("+")})${if (l.bounce) " (rebond)" else ""}",
+                        color = if (cur && !k.hud) Color(0xFF6B6258) else k.muted, fontSize = 11.sp, maxLines = 1
                     )
                 }
             }
@@ -394,37 +397,37 @@ fun GameScreen(s: Store, g: Game) {
     }
 
     // Panel showing darts thrown this turn and running score
-    Panel(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 4.dp)) {
+    Panel(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Fléchettes du tour (${currentDarts.size}/3)", fontWeight = FontWeight.Bold, color = k.muted, fontSize = 13.sp)
-            Text("Reste visé : $runningScore", fontWeight = FontWeight.Bold, color = k.primary, fontSize = 14.sp)
+            Text("Fléchettes du tour (${currentDarts.size}/3)", fontWeight = FontWeight.Bold, color = k.muted, fontSize = 12.sp)
+            Text("Reste visé : $runningScore", fontWeight = FontWeight.Bold, color = k.primary, fontSize = 13.sp)
         }
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (i in 0 until 3) {
                 val dartVal = currentDarts.getOrNull(i)
                 Box(
                     Modifier
                         .weight(1f)
-                        .height(36.dp)
+                        .height(32.dp)
                         .background(if (dartVal != null) k.primary.copy(alpha = 0.15f) else k.surf, k.btn)
                         .border(k.bw, if (dartVal != null) k.primary else k.line, k.btn),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(if (dartVal != null) "$dartVal" else "—", fontWeight = FontWeight.Bold, color = if (dartVal != null) k.primary else k.muted)
+                    Text(if (dartVal != null) "$dartVal" else "—", fontWeight = FontWeight.Bold, color = if (dartVal != null) k.primary else k.muted, fontSize = 13.sp)
                 }
             }
         }
     }
 
-    Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text("Au tour de", color = k.muted)
-            Text(g.names[g.cur], fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("Au tour de", color = k.muted, fontSize = 12.sp)
+            Text(g.names[g.cur], fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 if (inp.isEmpty()) "0" else if (multiplier > 1) "$inp × $multiplier = $evaluatedDart" else inp,
-                fontSize = if (multiplier > 1) 24.sp else 48.sp,
+                fontSize = if (multiplier > 1) 22.sp else 40.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (k.hud) k.cta else k.ink
             )
@@ -432,12 +435,12 @@ fun GameScreen(s: Store, g: Game) {
     }
 
     // Multiplier selector: Simple, Double, Triple
-    Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         listOf(1 to "Simple (×1)", 2 to "Double (×2)", 3 to "Triple (×3)").forEach { (m, label) ->
             val sel = multiplier == m
             Button(
                 onClick = { multiplier = m },
-                modifier = Modifier.weight(1f).height(36.dp),
+                modifier = Modifier.weight(1f).height(32.dp),
                 shape = k.btn,
                 border = BorderStroke(k.bw, if (sel) k.primary else k.line),
                 colors = ButtonDefaults.buttonColors(
@@ -446,52 +449,52 @@ fun GameScreen(s: Store, g: Game) {
                 ),
                 contentPadding = PaddingValues(0.dp)
             ) {
-                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
 
     listOf("123", "456", "789").forEach { r ->
-        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            r.forEach { c -> Choice("$c", false, Modifier.weight(1f).height(44.dp)) { add(c) } }
+        Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            r.forEach { c -> Choice("$c", false, Modifier.weight(1f).height(38.dp)) { add(c) } }
         }
     }
-    Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Choice("C", false, Modifier.weight(1f).height(44.dp)) { inp = "" }
-        Choice("0", false, Modifier.weight(1f).height(44.dp)) { add('0') }
-        Choice("⌫", false, Modifier.weight(1f).height(44.dp)) { inp = inp.dropLast(1) }
+    Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Choice("C", false, Modifier.weight(1f).height(38.dp)) { inp = "" }
+        Choice("0", false, Modifier.weight(1f).height(38.dp)) { add('0') }
+        Choice("⌫", false, Modifier.weight(1f).height(38.dp)) { inp = inp.dropLast(1) }
     }
 
-    Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         OutlinedButton({ 
             if (currentDarts.isNotEmpty()) {
                 currentDarts = currentDarts.dropLast(1)
             } else {
                 s.undo()
             }
-        }, Modifier.weight(1f).height(46.dp), shape = k.btn) { 
-            Text(if (currentDarts.isNotEmpty()) "Effacer" else "Annuler", fontSize = 13.sp) 
+        }, Modifier.weight(1f).height(40.dp), shape = k.btn) { 
+            Text(if (currentDarts.isNotEmpty()) "Effacer" else "Annuler", fontSize = 12.sp) 
         }
         Button(
-            { validateDart() }, Modifier.weight(2f).height(46.dp), shape = k.btn,
+            { validateDart() }, Modifier.weight(2f).height(40.dp), shape = k.btn,
             colors = ButtonDefaults.buttonColors(containerColor = k.cta, contentColor = k.onCta),
             enabled = inp.isNotEmpty() && currentDarts.size < 3
-        ) { Text("Valider la fléchette", fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+        ) { Text("Valider la fléchette", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
     }
 
     if (currentDarts.isNotEmpty()) {
         Button(
-            { validateTurn() }, Modifier.fillMaxWidth().height(42.dp).padding(bottom = 6.dp), shape = k.btn,
+            { validateTurn() }, Modifier.fillMaxWidth().height(38.dp).padding(bottom = 4.dp), shape = k.btn,
             colors = ButtonDefaults.buttonColors(containerColor = k.primary, contentColor = Color.White)
-        ) { Text("Valider le tour (${currentDarts.sum()} pts)", fontSize = 13.sp) }
+        ) { Text("Valider le tour (${currentDarts.sum()} pts)", fontSize = 12.sp) }
     }
 
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        OutlinedButton({ s.pause() }, Modifier.weight(1f).height(38.dp), shape = k.btn, contentPadding = PaddingValues(0.dp)) { 
-            Text("Pause", fontSize = 12.sp, maxLines = 1) 
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        OutlinedButton({ s.pause() }, Modifier.weight(1f).height(34.dp), shape = k.btn, contentPadding = PaddingValues(0.dp)) { 
+            Text("Pause", fontSize = 11.sp, maxLines = 1) 
         }
-        OutlinedButton({ askQuit = true }, Modifier.weight(1f).height(38.dp), shape = k.btn, colors = ButtonDefaults.outlinedButtonColors(contentColor = k.red), contentPadding = PaddingValues(0.dp)) { 
-            Text("Abandonner", fontSize = 12.sp, maxLines = 1) 
+        OutlinedButton({ askQuit = true }, Modifier.weight(1f).height(34.dp), shape = k.btn, colors = ButtonDefaults.outlinedButtonColors(contentColor = k.red), contentPadding = PaddingValues(0.dp)) { 
+            Text("Abandonner", fontSize = 11.sp, maxLines = 1) 
         }
     }
 
