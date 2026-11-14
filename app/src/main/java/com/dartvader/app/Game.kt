@@ -86,6 +86,7 @@ class Store(ctx: Context) {
     var history by mutableStateOf(many("history"))
     var start by mutableStateOf(sp.getInt("start", 501))
     var dbl by mutableStateOf(sp.getBoolean("dbl", false))
+    var randomizeOrder by mutableStateOf(sp.getBoolean("randomizeOrder", false))
     var names by mutableStateOf(
         sp.getString("names", null)?.let { s ->
             runCatching { JSONArray(s).let { a -> List(a.length()) { a.getString(it) } } }.getOrNull()
@@ -101,6 +102,7 @@ class Store(ctx: Context) {
             .putString("paused", JSONArray(paused.map { it.toJson() }).toString())
             .putString("history", JSONArray(history.map { it.toJson() }).toString())
             .putInt("start", start).putBoolean("dbl", dbl)
+            .putBoolean("randomizeOrder", randomizeOrder)
             .putString("names", JSONArray(names).toString())
             .putString("style", style.name)
             .apply()
@@ -108,13 +110,15 @@ class Store(ctx: Context) {
 
     fun newGame() {
         names = names.mapIndexed { i, n -> n.trim().ifEmpty { "Joueur ${i + 1}" } }
-        active = Game(System.currentTimeMillis(), start, dbl, names)
+        val gameNames = if (randomizeOrder) names.shuffled() else names
+        active = Game(System.currentTimeMillis(), start, dbl, gameNames)
         save()
     }
 
     fun rematch() {
         val g = active ?: return
-        active = Game(System.currentTimeMillis(), g.start, g.dbl, g.names)
+        val gameNames = if (randomizeOrder) names.mapIndexed { i, n -> n.trim().ifEmpty { "Joueur ${i + 1}" } }.shuffled() else g.names
+        active = Game(System.currentTimeMillis(), g.start, g.dbl, gameNames)
         save()
     }
 

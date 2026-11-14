@@ -266,6 +266,29 @@ fun SetupScreen(s: Store) {
         Choice("Fin libre", !s.dbl, Modifier.weight(1f)) { s.dbl = false; s.save() }
         Choice("Double obligatoire", s.dbl, Modifier.weight(1f)) { s.dbl = true; s.save() }
     }
+    Label("Ordre des joueurs")
+    Panel(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { s.randomizeOrder = !s.randomizeOrder; s.save() }) {
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Randomiser l'ordre", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = k.ink)
+                Text("Mélanger l'ordre des joueurs au lancement", color = k.muted, fontSize = 13.sp)
+            }
+            Switch(
+                checked = s.randomizeOrder,
+                onCheckedChange = { s.randomizeOrder = it; s.save() },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = k.primary,
+                    uncheckedThumbColor = k.muted,
+                    uncheckedTrackColor = k.surf
+                )
+            )
+        }
+    }
     Label("Joueurs")
     s.names.forEachIndexed { i, n ->
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
