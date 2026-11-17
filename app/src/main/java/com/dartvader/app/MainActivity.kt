@@ -460,10 +460,12 @@ fun GameScreen(s: Store, g: Game) {
         }
     }
     Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Choice("C", false, Modifier.weight(1f).height(38.dp)) { inp = "" }
-        Choice("0", false, Modifier.weight(1f).height(38.dp)) { add('0') }
         Choice("⌫", false, Modifier.weight(1f).height(38.dp)) { inp = inp.dropLast(1) }
+        Choice("0", false, Modifier.weight(1f).height(38.dp)) { add('0') }
+        Choice("C", false, Modifier.weight(1f).height(38.dp)) { inp = "" }
     }
+
+    Spacer(Modifier.height(4.dp))
 
     Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         OutlinedButton({ 
